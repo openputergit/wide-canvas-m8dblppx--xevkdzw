@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #e31c72;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .custom-file-upload {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .custom-file-upload:hover {
+            transform: translateY(-2px);
+        }
+
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .slide-fade-enter-active,
+        .slide-fade-leave-active {
+            transition: all 0.3s ease;
+        }
+        .slide-fade-enter-from,
+        .slide-fade-leave-to {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #c6165f;
+        }
+
+        .btn-primary:disabled {
+            background-color: #f491b8;
+        }
+
+        .text-primary {
+            color: var(--primary-color);
+        }
+
+        .border-primary {
+            border-color: var(--primary-color);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Authentication Component -->
+        <div v-if="!isLoggedIn" class="max-w-md mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="p-8">
+                <h1 class="text-3xl font-bold mb-6 text-center text-primary">{{ currentView === 'login' ? 'Login' : 'Sign Up' }}</h1>
+                
+                <!-- Toggle View Buttons -->
+                <div class="flex mb-6">
+                    <button 
+                        @click="currentView = 'login'"
+                        class="flex-1 py-2 border-b-2 font-medium text-sm transition-colors"
+                        :class="currentView === 'login' ? 'border-primary text-primary' : 'border-gray-200 text-gray-500'"
+                    >Login</button>
+                    <button 
+                        @click="currentView = 'signup'"
+                        class="flex-1 py-2 border-b-2 font-medium text-sm transition-colors"
+                        :class="currentView === 'signup' ? 'border-primary text-primary' : 'border-gray-200 text-gray-500'"
+                    >Sign Up</button>
+                </div>
+                
+                <!-- Login Form -->
+                <form v-if="currentView === 'login'" @submit.prevent="login">
+                    <div class="mb-4">
+                        <label for="email" class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            v-model="loginForm.email" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            placeholder="Enter your email"
+                        >
+                    </div>
+                    <div class="mb-6">
+                        <label for="password" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            v-model="loginForm.password" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            placeholder="Enter your password"
+                        >
+                    </div>
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center">
+                            <input id="remember-me" type="checkbox" class="h-4 w-4 text-primary focus:ring-pink-500 border-gray-300 rounded">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-700">Remember me</label>
+                        </div>
+                        <a href="#" class="text-sm text-primary hover:underline">Forgot password?</a>
+                    </div>
+                    <button type="submit" class="w-full btn-primary py-2 px-4 rounded-md font-medium">Login</button>
+                </form>
+                
+                <!-- Sign Up Form -->
+                <form v-if="currentView === 'signup'" @submit.prevent="signup">
+                    <div class="mb-4">
+                        <label for="name" class="block text-gray-700 text-sm font-medium mb-2">Full Name</label>
+                        <input 
+                            type="text" 
+                            id="name" 
+                            v-model="signupForm.name" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            placeholder="Enter your full name"
+                        >
+                    </div>
+                    <div class="mb-4">
+                        <label for="signup-email" class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                        <input 
+                            type="email" 
+                            id="signup-email" 
+                            v-model="signupForm.email" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            placeholder="Enter your email"
+                        >
+                    </div>
+                    <div class="mb-4">
+                        <label for="signup-password" class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                        <input 
+                            type="password" 
+                            id="signup-password" 
+                            v-model="signupForm.password" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            placeholder="Create a password"
+                        >
+                    </div>
+                    <div class="mb-6">
+                        <label for="confirm-password" class="block text-gray-700 text-sm font-medium mb-2">Confirm Password</label>
+                        <input 
+                            type="password" 
+                            id="confirm-password" 
+                            v-model="signupForm.confirmPassword" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            placeholder="Confirm your password"
+                        >
+                    </div>
+                    <button type="submit" class="w-full btn-primary py-2 px-4 rounded-md font-medium">Sign Up</button>
+                </form>
+                
+                <div v-if="authError" class="mt-4 p-3 bg-red-100 text-red-700 rounded-md">
+                    {{ authError }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application (Expense Tracker) -->
+        <div v-else>
+            <header class="flex flex-col sm:flex-row justify-between items-center mb-8">
+                <div class="mb-4 sm:mb-0">
+                    <h1 class="text-3xl font-bold text-primary">Expense Tracker</h1>
+                    <p class="text-gray-600">Track your expenses easily</p>
+                </div>
+                <div class="flex items-center">
+                    <div class="mr-4 text-right">
+                        <p class="font-medium">{{ userData.name }}</p>
+                        <p class="text-sm text-gray-600">{{ userData.email }}</p>
+                    </div>
+                    <button @click="logout" class="text-gray-600 hover:text-primary">
+                        <i class="bi bi-box-arrow-right text-xl"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                    <p class="text-gray-500 mb-2">Total Spent</p>
+                    <p class="text-3xl font-bold flex items-center">
+                        <span>${{ totalSpent.toFixed(2) }}</span>
+                    </p>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                    <p class="text-gray-500 mb-2">Monthly Budget</p>
+                    <p class="text-3xl font-bold flex items-center">
+                        <span>${{ budget.toFixed(2) }}</span>
+                        <button @click="showBudgetModal = true" class="ml-2 text-sm text-primary">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                    </p>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6 flex flex-col">
+                    <p class="text-gray-500 mb-2">Remaining</p>
+                    <p class="text-3xl font-bold" :class="remaining < 0 ? 'text-red-500' : 'text-green-500'">
+                        ${{ remaining.toFixed(2) }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Add New Expense -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-bold mb-4 text-primary">Add New Expense</h2>
+                <form @submit.prevent="addExpense" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label for="description" class="block text-gray-700 text-sm font-medium mb-2">Description</label>
+                        <input 
+                            type="text" 
+                            id="description" 
+                            v-model="newExpense.description" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            placeholder="What did you spend on?"
+                        >
+                    </div>
+                    <div>
+                        <label for="amount" class="block text-gray-700 text-sm font-medium mb-2">Amount ($)</label>
+                        <input 
+                            type="number" 
+                            id="amount" 
+                            v-model="newExpense.amount" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required 
+                            min="0.01" 
+                            step="0.01"
+                            placeholder="0.00"
+                        >
+                    </div>
+                    <div>
+                        <label for="category" class="block text-gray-700 text-sm font-medium mb-2">Category</label>
+                        <select 
+                            id="category" 
+                            v-model="newExpense.category" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                            required
+                        >
+                            <option value="" disabled selected>Select a category</option>
+                            <option value="Food">Food</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Housing">Housing</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="date" class="block text-gray-700 text-sm font-medium mb-2">Date</label>
+                        <input 
+                            type="date" 
+                            id="date" 
+                            v-model="newExpense.date" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                            required
+                        >
+                    </div>
+                    <div class="md:col-span-4">
+                        <button type="submit" class="btn-primary py-2 px-4 rounded-md font-medium">Add Expense</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Expenses List -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-primary">Recent Expenses</h2>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            v-model="searchTerm" 
+                            placeholder="Search expenses" 
+                            class="px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                        >
+                        <i class="bi bi-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr v-if="filteredExpenses.length === 0">
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">No expenses found</td>
+                            </tr>
+                            <tr v-for="(expense, index) in filteredExpenses" :key="index" class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ expense.description }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                        :class="getCategoryClass(expense.category)">
+                                        {{ expense.category }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-500">{{ formatDate(expense.date) }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    ${{ parseFloat(expense.amount).toFixed(2) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button @click="deleteExpense(index)" class="text-red-500 hover:text-red-700">Delete</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Budget Setting Modal -->
+            <div v-if="showBudgetModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                    <h2 class="text-xl font-bold mb-4 text-primary">Set Monthly Budget</h2>
+                    <form @submit.prevent="updateBudget" class="space-y-4">
+                        <div>
+                            <label for="budget" class="block text-gray-700 text-sm font-medium mb-2">Budget Amount ($)</label>
+                            <input 
+                                type="number" 
+                                id="budget" 
+                                v-model="newBudget" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent" 
+                                required 
+                                min="0.01" 
+                                step="0.01"
+                                placeholder="0.00"
+                            >
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" @click="showBudgetModal = false" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700">Cancel</button>
+                            <button type="submit" class="btn-primary px-4 py-2 rounded-md">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Image Analyzer Modal -->
+        <button v-if="isLoggedIn" @click="showImageAnalyzer = true" class="fixed bottom-8 right-8 bg-primary text-white rounded-full p-4 shadow-lg hover:bg-pink-700 transition-colors">
+            <i class="bi bi-image text-xl"></i>
+        </button>
+
+        <div v-if="showImageAnalyzer && isLoggedIn" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <h2 class="text-xl font-bold text-primary">AI Image Analyzer</h2>
+                    <button @click="showImageAnalyzer = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <label 
+                        for="modalImageUpload" 
+                        class="custom-file-upload flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50"
+                        :class="{'border-pink-500': isDragging, 'border-gray-300': !isDragging}"
+                        @dragover.prevent="isDragging = true"
+                        @dragleave.prevent="isDragging = false"
+                        @drop.prevent="handleDrop($event)">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <i class="bi bi-cloud-upload text-4xl mb-3 text-primary"></i>
+                            <p class="mb-2 text-sm text-gray-500">
+                                <span class="font-semibold">Click to upload</span> or drag and drop
+                            </p>
+                            <p class="text-xs text-gray-500">PNG, JPG or JPEG (MAX. 5MB)</p>
+                        </div>
+                        <input 
+                            id="modalImageUpload" 
+                            type="file" 
+                            class="hidden" 
+                            accept="image/*"
+                            @change="handleFileUpload">
+                    </label>
+                </div>
+
+                <div v-if="selectedImage" class="mb-6">
+                    <img :src="selectedImage" class="max-w-full h-auto rounded-lg mx-auto">
+                </div>
+
+                <button 
+                    @click="analyzeImage"
+                    class="w-full py-3 px-4 rounded-lg font-medium"
+                    :class="{'bg-gray-400 cursor-not-allowed': !selectedImage || isLoading, 'btn-primary hover:bg-pink-700': selectedImage && !isLoading}"
+                    :disabled="!selectedImage || isLoading">
+                    <span v-if="!isLoading">Analyze Image</span>
+                    <i v-else class="bi bi-arrow-repeat loading-spinner"></i>
+                </button>
+
+                <div v-if="analysis" class="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <h3 class="font-semibold mb-2 text-primary">Analysis Result:</h3>
+                    <p class="text-gray-700">{{ analysis }}</p>
+                </div>
+
+                <div v-if="error" class="mt-6 p-4 bg-red-50 text-red-700 rounded-lg">
+                    {{ error }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    // Authentication
+                    isLoggedIn: false,
+                    currentView: 'login',
+                    loginForm: {
+                        email: '',
+                        password: ''
+                    },
+                    signupForm: {
+                        name: '',
+                        email: '',
+                        password: '',
+                        confirmPassword: ''
+                    },
+                    userData: {
+                        name: '',
+                        email: ''
+                    },
+                    authError: null,
+
+                    // Expense Tracker
+                    expenses: [],
+                    newExpense: {
+                        description: '',
+                        amount: null,
+                        category: '',
+                        date: new Date().toISOString().slice(0, 10)
+                    },
+                    searchTerm: '',
+                    budget: 1000.00,
+                    newBudget: 1000.00,
+                    showBudgetModal: false,
+
+                    // AI Image Analyzer
+                    showImageAnalyzer: false,
+                    selectedImage: null,
+                    isLoading: false,
+                    isDragging: false,
+                    analysis: null,
+                    error: null
+                }
+            },
+            computed: {
+                totalSpent() {
+                    return this.expenses.reduce((total, expense) => total + parseFloat(expense.amount), 0)
+                },
+                remaining() {
+                    return this.budget - this.totalSpent
+                },
+                filteredExpenses() {
+                    if (!this.searchTerm) return this.expenses;
+                    const term = this.searchTerm.toLowerCase();
+                    return this.expenses.filter(expense => 
+                        expense.description.toLowerCase().includes(term) || 
+                        expense.category.toLowerCase().includes(term)
+                    );
+                }
+            },
+            methods: {
+                // Authentication Methods
+                login() {
+                    // In a real app, you would make an API call to authenticate
+                    this.authError = null;
+                    
+                    // Simple validation
+                    if (!this.loginForm.email || !this.loginForm.password) {
+                        this.authError = "Email and password are required";
+                        return;
+                    }
+                    
+                    // For demo purposes, just log in with any credentials
+                    this.userData = {
+                        name: "Demo User",
+                        email: this.loginForm.email
+                    };
+                    this.isLoggedIn = true;
+                    
+                    // Load demo data
+                    this.loadDemoData();
+                },
+                signup() {
+                    this.authError = null;
+                    
+                    // Simple validation
+                    if (!this.signupForm.name || !this.signupForm.email || 
+                        !this.signupForm.password || !this.signupForm.confirmPassword) {
+                        this.authError = "All fields are required";
+                        return;
+                    }
+                    
+                    if (this.signupForm.password !== this.signupForm.confirmPassword) {
+                        this.authError = "Passwords do not match";
+                        return;
+                    }
+                    
+                    // For demo purposes, just sign up with any credentials
+                    this.userData = {
+                        name: this.signupForm.name,
+                        email: this.signupForm.email
+                    };
+                    this.isLoggedIn = true;
+                    
+                    // Load demo data
+                    this.loadDemoData();
+                },
+                logout() {
+                    this.isLoggedIn = false;
+                    this.loginForm = { email: '', password: '' };
+                    this.signupForm = { name: '', email: '', password: '', confirmPassword: '' };
+                },
+                
+                // Expense Tracker Methods
+                loadDemoData() {
+                    // Load some sample expenses for demonstration
+                    const today = new Date();
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const twoDaysAgo = new Date(today);
+                    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+                    
+                    this.expenses = [
+                        {
+                            description: "Groceries",
+                            amount: 75.32,
+                            category: "Food",
+                            date: today.toISOString().slice(0, 10)
+                        },
+                        {
+                            description: "Movie tickets",
+                            amount: 24.99,
+                            category: "Entertainment",
+                            date: yesterday.toISOString().slice(0, 10)
+                        },
+                        {
+                            description: "Gas",
+                            amount: 45.00,
+                            category: "Transportation",
+                            date: twoDaysAgo.toISOString().slice(0, 10)
+                        },
+                        {
+                            description: "Electricity bill",
+                            amount: 120.50,
+                            category: "Utilities",
+                            date: twoDaysAgo.toISOString().slice(0, 10)
+                        }
+                    ];
+                },
+                addExpense() {
+                    const expense = { ...this.newExpense };
+                    this.expenses.unshift(expense);
+                    
+                    // Reset form
+                    this.newExpense = {
+                        description: '',
+                        amount: null,
+                        category: '',
+                        date: new Date().toISOString().slice(0, 10)
+                    };
+                },
+                deleteExpense(index) {
+                    this.expenses.splice(index, 1);
+                },
+                updateBudget() {
+                    this.budget = parseFloat(this.newBudget);
+                    this.showBudgetModal = false;
+                },
+                formatDate(dateString) {
+                    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                    return new Date(dateString).toLocaleDateString(undefined, options);
+                },
+                getCategoryClass(category) {
+                    const categoryClasses = {
+                        'Food': 'bg-green-100 text-green-800',
+                        'Transportation': 'bg-blue-100 text-blue-800',
+                        'Entertainment': 'bg-purple-100 text-purple-800',
+                        'Utilities': 'bg-yellow-100 text-yellow-800',
+                        'Housing': 'bg-indigo-100 text-indigo-800',
+                        'Healthcare': 'bg-red-100 text-red-800',
+                        'Shopping': 'bg-pink-100 text-pink-800',
+                        'Other': 'bg-gray-100 text-gray-800'
+                    };
+                    
+                    return categoryClasses[category] || 'bg-gray-100 text-gray-800';
+                },
+                
+                // AI Image Analyzer Methods
+                handleFileUpload(event) {
+                    const file = event.target.files[0]
+                    this.processFile(file)
+                },
+                handleDrop(event) {
+                    this.isDragging = false
+                    const file = event.dataTransfer.files[0]
+                    this.processFile(file)
+                },
+                processFile(file) {
+                    if (!file) return
+
+                    if (!file.type.match('image.*')) {
+                        this.error = 'Please upload an image file'
+                        return
+                    }
+
+                    if (file.size > 5 * 1024 * 1024) {
+                        this.error = 'File size should not exceed 5MB'
+                        return
+                    }
+
+                    this.error = null
+                    const reader = new FileReader()
+                    reader.onload = (e) => {
+                        this.selectedImage = e.target.result
+                    }
+                    reader.readAsDataURL(file)
+                },
+                async analyzeImage() {
+                    if (!this.selectedImage) return
+
+                    this.isLoading = true
+                    this.error = null
+                    this.analysis = null
+
+                    try {
+                        const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/ai', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer iLyC2QM8xETQL6HgMDw5eKHrgwH3',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                messages: [{
+                                    role: 'user',
+                                    content: [
+                                        {
+                                            type: 'text',
+                                            text: "What's in this image?"
+                                        },
+                                        {
+                                            type: 'image_url',
+                                            image_url: {
+                                                url: this.selectedImage
+                                            }
+                                        }
+                                    ]
+                                }]
+                            })
+                        })
+
+                        const data = await response.json()
+                        this.analysis = data.message
+                    } catch (error) {
+                        this.error = 'An error occurred while analyzing the image. Please try again.'
+                        console.error('Error:', error)
+                    } finally {
+                        this.isLoading = false
+                    }
+                }
+            }
+        }).mount('#app')
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
